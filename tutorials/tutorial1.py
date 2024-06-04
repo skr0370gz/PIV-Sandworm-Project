@@ -248,8 +248,8 @@ def ArucoMarker(image_path):
     """
     # Check that we have a valid ArUco marker
     if ARUCO_DICT.get(desired_aruco_dictionary, None) is None:
-        print("[INFO] ArUCo tag of '{}' is not supported".format(
-            args["type"]))
+        # print("[INFO] ArUCo tag of '{}' is not supported".format(
+        #     args["type"]))
         sys.exit(0)
     # construct the argument parser and parse the arguments
     ap = argparse.ArgumentParser()
@@ -259,25 +259,31 @@ def ArucoMarker(image_path):
     args = vars(ap.parse_args())
 
     # Load the ArUco dictionary
-    print("[INFO] detecting '{}' markers...".format(
-        desired_aruco_dictionary))
+    # print("[INFO] detecting '{}' markers...".format(
+    #     desired_aruco_dictionary))
     this_aruco_dictionary = cv2.aruco.Dictionary_get(ARUCO_DICT[desired_aruco_dictionary])
     this_aruco_parameters = cv2.aruco.DetectorParameters_create()
      
     # Read the image
     frame = cv2.imread(image_path)
     
+    # Get the frame size
+    frame_size = (frame.shape[1], frame.shape[0])
+    
     # Detect ArUco markers in the image
     (corners, ids, rejected) = cv2.aruco.detectMarkers(
         frame, this_aruco_dictionary, parameters=this_aruco_parameters)
     
-    print(rejected)
-    print("pp")
+    # print(rejected)
+    # print("pp")
     # Check that at least one ArUco marker was detected
     if len(corners) > 0:
-        print("identified")
+        # print("identified")
         # Flatten the ArUco IDs list
         ids = ids.flatten()
+         
+        # Create an empty array to store the marker locations
+        marker_locations = []
          
         # Loop over the detected ArUco corners
         for (marker_corner, marker_id) in zip(corners, ids):
@@ -309,59 +315,166 @@ def ArucoMarker(image_path):
                 (top_left[0], top_left[1] - 15),
                 cv2.FONT_HERSHEY_SIMPLEX,
                 0.5, (0, 255, 0), 2)
-            print("entered")
-            print(center_x)
-            print(center_y)
+            # print("entered")
+            # print(center_x)
+            # print(center_y)
+            
+            # Append the marker location to the array
+            marker_locations.append((center_x, center_y))
+    # Return the array of marker locations and frame size
+    return marker_locations, frame_size
 
-    # Display the resulting image
-    cv2.imshow('image', frame)
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
+def crop_image(image_path, adjusted_frame_width, adjusted_frame_height, distance_above_marker, distance_left_of_marker):
+    """
+    Main method of the program.
+    """
+    # Check that we have a valid ArUco marker
+    if ARUCO_DICT.get(desired_aruco_dictionary, None) is None:
+        sys.exit(0)
 
-dir_path = r'data/test1/Test'
-list_image = os.listdir(dir_path)
-path = files('openpiv') / "data" / "test1"/"Test" 
-print(list_image)
-#pre-processing
-for i,_ in enumerate(os.listdir(dir_path)):
-    #process_single(list_image[i], list_image[i+1],i)
-    #img = cv.imread(list_image[i], cv.IMREAD_GRAYSCALE)
-    print(path / list_image[i])
-    ArucoMarker(os.path.join(path,list_image[i]))
-# save the output image if desired
-# output_image_path = 'output_image.jpg'
-# cv2.imwrite(output_image_path, image)
-# print(f"[INFO] output image saved to {output_image_path}")
+    # Load the ArUco dictionary
+    this_aruco_dictionary = cv2.aruco.Dictionary_get(ARUCO_DICT[desired_aruco_dictionary])
+    this_aruco_parameters = cv2.aruco.DetectorParameters_create()
+     
+    # Read the image
+    frame = cv2.imread(image_path)
+    
+    # Get the frame size
+    frame_size = (frame.shape[1], frame.shape[0])
+    
+    # Detect ArUco markers in the image
+    (corners, ids, rejected) = cv2.aruco.detectMarkers(
+        frame, this_aruco_dictionary, parameters=this_aruco_parameters)
+    
+    # Check that at least one ArUco marker was detected
+    if len(corners) > 0:
+        # Flatten the ArUco IDs list
+        ids = ids.flatten()
+         
+        # Create an empty array to store the marker locations
+        marker_locations = []
+         
+        # Loop over the detected ArUco corners
+        for (marker_corner, marker_id) in zip(corners, ids):
+         
+            # Extract the marker corners
+            corners = marker_corner.reshape((4, 2))
+            (top_left, top_right, bottom_right, bottom_left) = corners
+             
+            # Convert the (x,y) coordinate pairs to integers
+            top_right = (int(top_right[0]), int(top_right[1]))
+            bottom_right = (int(bottom_right[0]), int(bottom_right[1]))
+            bottom_left = (int(bottom_left[0]), int(bottom_left[1]))
+            top_left = (int(top_left[0]), int(top_left[1]))
+             
+            # Calculate and draw the center of the ArUco marker
+            center_x = int((top_left[0] + bottom_right[0]) / 2.0)
+            center_y = int((top_left[1] + bottom_right[1]) / 2.0)
+            
+            # Append the marker location to the array
+            marker_locations.append((center_x, center_y))
+    print(marker_locations)
+    # Calculate the crop coordinates
+    left_x = marker_locations[0][0] - distance_left_of_marker
+    left_y = marker_locations[0][1] - distance_above_marker
+    right_x = left_x + adjusted_frame_width
+    right_y = left_y + adjusted_frame_height
+    
+    # Crop the image
+    cropped_image = frame[left_y:right_y, left_x:right_x]
+    
+    return cropped_image
+    
+def process_deviation ():
+    dir_path = r'data/test1/Test'
+    list_image = os.listdir(dir_path)
+    path = files('openpiv') / "data" / "test1"/"Video_To_Frame" 
+    # print(list_image)
+    #pre-processing
+    left_marker_x = []
+    left_marker_y = []
+    right_marker_x = []
+    right_marker_y = []
+    frame_sizes = []
 
-# dir_path = r'data/test1/Video_To_Frame'
-# list_image = os.listdir(dir_path)
-# path = files('openpiv') / "data" / "test1"/"Video_To_Frame" 
-# print(list_image)
-# #pre-processing
-# for i,_ in enumerate(os.listdir(dir_path)):
-#     #process_single(list_image[i], list_image[i+1],i)
-#     #img = cv.imread(list_image[i], cv.IMREAD_GRAYSCALE)
-#     print(path / list_image[i])
-#     nemo = cv2.imread(os.path.join(path,list_image[i]))
-#     print(list_image[i])
-#     print(nemo)
-#     print("test")
-#     processed = cv2.cvtColor(nemo, cv2.COLOR_BGR2RGB)
-#     hsv_processed= cv2.cvtColor(processed, cv2.COLOR_RGB2HSV)
-#     # light_blue = (213.0769, 98.1132, 62.3529)
-#     # dark_blue = (211.4706, 100.0000, 80.0000)
-#     light_yellow = (130, 63, 185)  # Adjust these values based on your specific blue
-#     dark_yellow = (179, 255, 255)
-#     mask = cv2.inRange(hsv_processed, light_yellow, dark_yellow)
-#     result = cv2.bitwise_and(processed, processed, mask=mask)
-#     # plt.imshow(mask)
-#     # plt.savefig(f'data/test1/Output/{i}')
-#     output_path = f'data/test1/Pre_Processed/{i}.png'
-#     plt.imsave(output_path, result)
+    for i,_ in enumerate(os.listdir(dir_path)):
+        marker_locations, frame_sizes = ArucoMarker(os.path.join(path,list_image[i]))
+        left_marker_x.append(marker_locations[0][0])
+        left_marker_y.append(marker_locations[0][1])
+        right_marker_x.append(marker_locations[1][0])
+        right_marker_y.append(marker_locations[1][1])
 
-# input_path = r'data/test1/Pre_Processed'
-# input_list_image = os.listdir(input_path)
-# #openpiv
-# for i,_ in enumerate(os.listdir(input_path)[:-1]):
-#     process_single(input_list_image[i], input_list_image[i+1],i)
-# print("fini")
+        # Calculate the maximum deviation between the markers
+        max_dev = (max(left_marker_x) - min(left_marker_x), max(right_marker_y) - min(right_marker_y))
+
+    # Calculate the adjusted allowed frame size
+    adjusted_frame_width = max(frame_sizes) - max_dev[0]
+    adjusted_frame_height = min(frame_sizes) - max_dev[1]
+
+    min_in_Y = min(left_marker_y)
+    min_in_X = min(left_marker_x)
+
+    distance_above_marker = min(frame_sizes) -min_in_Y
+    distance_left_of_marker = max(frame_sizes) - min_in_X
+    print(min_in_Y,min_in_X)
+    for i,_ in enumerate(os.listdir(dir_path)):
+        cropped_image = crop_image(os.path.join(path,list_image[i]), adjusted_frame_width, adjusted_frame_height, min_in_Y, min_in_X)
+        output_path = f'data/test1/Cropped/{i}.png'
+        cv2.imwrite(output_path, cropped_image)
+
+def particle_masking():
+    path = files('openpiv') / "data" / "test1"/"Cropped" 
+    list_image = os.listdir(path)
+    print(list_image)
+    #pre-processing
+    for i,_ in enumerate(os.listdir(path)):
+        #process_single(list_image[i], list_image[i+1],i)
+        #img = cv.imread(list_image[i], cv.IMREAD_GRAYSCALE)
+        print(path / list_image[i])
+        nemo = cv2.imread(os.path.join(path,list_image[i]))
+        # store image shape(h, w) = img.shape
+
+
+        scale_percent = 50 # percent of original sizewidth = int(img.shape[1] * scale_percent / 100) 
+
+        height = int(nemo.shape[0] * scale_percent / 100) 
+        width = int(nemo.shape[1] * scale_percent / 100) 
+
+        dim = (width, height) 
+
+
+        nemo = cv2.resize(nemo, dim, interpolation = cv2.INTER_AREA) 
+
+        # print(list_image[i])
+        # print(nemo)
+        # print("test")
+        # processed = cv2.cvtColor(nemo, cv2.COLOR_BGR2RGB)
+        processed = cv2.cvtColor(nemo, cv2.COLOR_BGR2YCrCb)
+        # (Y,Cr,Cb)=cv2.split(processed)
+        hsv_processed= cv2.cvtColor(processed, cv2.COLOR_RGB2HSV)
+        (H,S,V)=cv2.split(hsv_processed)
+        # cv2.imshow("Red",H)
+        # # cv2.imshow("Sat",S)
+        # # cv2.imshow("Val",V)
+        kernel = np.ones((2,2),np.uint8)
+        mod_img = cv2.adaptiveThreshold(H,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C,cv2.THRESH_BINARY,11,6)
+        modded= cv2.morphologyEx(mod_img, cv2.MORPH_CLOSE, kernel)
+        output_path = f'data/test1/Pre_Processed/{i}.png'
+        cv2.imwrite(output_path, modded)
+
+process_deviation()
+particle_masking()
+
+input_path = r'data/test1/Pre_Processed'
+input_list_image = os.listdir(input_path)
+#openpiv
+(marker_locations, frameSize)= ArucoMarker(input_list_image[0])
+left_marker_x= marker_locations[0][0]
+left_marker_y=marker_locations[0][1]
+right_marker_x=marker_locations[1][0]
+right_marker_y=marker_locations[1][1]
+distance_in_pixels = left_marker_x-right_marker_x
+distance_in_mm = 17.988
+for i,_ in enumerate(os.listdir(input_path)[:-1]):
+    process_single(input_list_image[i], input_list_image[i+1],i)
+print("fini")
