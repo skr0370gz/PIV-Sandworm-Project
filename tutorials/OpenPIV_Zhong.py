@@ -393,7 +393,7 @@ def crop_image(image_path, adjusted_frame_width, adjusted_frame_height, distance
 def process_deviation ():
     dir_path = r'data/test1/Video_To_Frame'
     list_image = natsorted(os.listdir(dir_path))
-    path = files('openpiv') / "data" / "test1"/"Video_To_Frame" 
+    print(list_image)
     # print(list_image)
     #pre-processing
     left_marker_x = []
@@ -403,7 +403,7 @@ def process_deviation ():
     frame_sizes = []
 
     for i,_ in enumerate(list_image):
-        marker_locations, frame_sizes = ArucoMarker(os.path.join(path,list_image[i]))
+        marker_locations, frame_sizes = ArucoMarker(os.path.join(dir_path,list_image[i]))
         left_marker_x.append(marker_locations[0][0])
         left_marker_y.append(marker_locations[0][1])
         right_marker_x.append(marker_locations[1][0])
@@ -423,7 +423,7 @@ def process_deviation ():
     distance_left_of_marker = max(frame_sizes) - min_in_X
     print(min_in_Y,min_in_X)
     for i,_ in enumerate(natsorted(os.listdir(dir_path))):
-        cropped_image = crop_image(os.path.join(path,list_image[i]), adjusted_frame_width, adjusted_frame_height, min_in_Y, min_in_X)
+        cropped_image = crop_image(os.path.join(dir_path,list_image[i]), adjusted_frame_width, adjusted_frame_height, min_in_Y, min_in_X)
         output_path = f'data/test1/Cropped/{i}.png'
         cv2.imwrite(output_path, cropped_image)
 
@@ -507,7 +507,28 @@ def process_video_to_frame():
         image_path = f"data/test1/Video_To_Frame/image_{i}.jpg"
         cv2.imwrite(image_path, f)
 
+def save_to_video():
+    path = files('openpiv') / "data" / "test1" / "Cropped"
+    video_name = files('openpiv') / "data" / "test1" /'process_video.mp4'
+    print(video_name)
+
+    images = natsorted(os.listdir(path))
+    # print(images)
+    frame = cv2.imread(os.path.join(path, images[0]))
+    height, width, layers = frame.shape
+    fourcc = cv2.VideoWriter_fourcc(*'mp4v')  # Be sure to use lower case
+    video = cv2.VideoWriter(str(video_name), fourcc, 30, (width,height))
+    #60hz
+
+    for image in images:
+        video.write(cv2.imread(os.path.join(path, image)))
+
+    cv2.destroyAllWindows()
+    video.release()
+
 process_video_to_frame()
+process_deviation()
+save_to_video()
 #process_deviation()
 # particle_masking()
 # path = files('openpiv') / "data" / "test1"/"Cropped" 
